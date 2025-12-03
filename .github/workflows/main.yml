@@ -32,7 +32,7 @@ jobs:
       - name: Check if there are changes in past 24 hours
         id: changes
         run: |
-          if git log --since="24 hours ago" --oneline | grep .; then
+          if git log --since="5 minutes ago" --oneline | grep .; then
             echo "Changes detected in last 24 hours."
           else
             echo "No changes in last 24 hours. Exiting."
