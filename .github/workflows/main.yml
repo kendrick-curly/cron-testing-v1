@@ -4,6 +4,7 @@ on:
   schedule:
     # 6pm PHT = 10am UTC
     - cron: "0 10 * * 1-5"
+  workflow_dispatch:
 
 jobs:
   check-testing-branch:
