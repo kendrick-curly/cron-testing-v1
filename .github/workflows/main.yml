@@ -34,7 +34,8 @@ jobs:
         id: commitswithintime
         with:
           hours: 0
-          minutes: 1
+          minutes: 0
+          seconds: 5
 
       # Use the output from the `commitswithintime` step
       - name: Get the output from CommitsWithinTime
@@ -43,15 +44,12 @@ jobs:
           echo "The 'number-of-commits-within-time' value is ${{ steps.commitswithintime.outputs.number-of-commits-within-time }}"
           echo "The 'total-commits' value is ${{ steps.commitswithintime.outputs.total-commits }}"
 
-      # - name: Check if there are changes in past 24 hours
-      #   id: changes
-      #   run: |
-      #     if git log --since="15 minutes ago" --oneline | grep .; then
-      #       echo "Changes detected in last 24 hours."
-      #     else
-      #       echo "No changes in last 24 hours. Exiting."
-      #       exit 0
-      #     fi
+      - name: Exit early if no new commits detected
+        if: ${{ steps.commitswithintime.outputs.has-new-commits-within-time == 'false' }}
+        run: |
+          echo "No new commits within the specified time window. Exiting."
+          exit 0
 
       - name: success
+        if: ${{ steps.commitswithintime.outputs.has-new-commits-within-time == 'true' }}
         run: echo "success"
