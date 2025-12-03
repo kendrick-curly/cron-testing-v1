@@ -33,7 +33,8 @@ jobs:
         uses: AlexStormwood/CommitsWithinTime@v1.1.12
         id: commitswithintime
         with:
-          minutes: 5
+          hours: 0
+          minutes: 1
 
       # Use the output from the `commitswithintime` step
       - name: Get the output from CommitsWithinTime
