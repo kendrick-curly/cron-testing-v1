@@ -2,7 +2,7 @@ name: Daily Test Branch Check
 
 on:
   schedule:
-    # 6pm PHT = 10am UTC
+    # 5pm Vietnam Time = 10am UTC, Monday to Friday
     - cron: "0 10 * * 1-5"
   workflow_dispatch:
 
@@ -25,7 +25,7 @@ jobs:
             TAG=$(git describe --tags --exact-match)
             echo "Found tag: $TAG"
           else
-            echo "::error::❌ This commit has NO TAG. Builds require a tag when using versioning: Tag."
+            echo "::error::❌ ${{github.ref_name}} This commit has NO TAG. Builds require a tag when using versioning: Tag."
             exit 1
           fi
 
@@ -36,7 +36,6 @@ jobs:
           hours: 0
           minutes: 0
           seconds: 5
-
       # Use the output from the `commitswithintime` step
       - name: Get the output from CommitsWithinTime
         run: |
