@@ -16,16 +16,18 @@ jobs:
         with:
           ref: testing
           fetch-depth: 0   # needed for tag and history checks
+          lfs: true
 
-      - name: Check for tag in v.x.x.x format
-        id: check_tag
+      - name: Check if commit has a tag
+        id: tagcheck
         run: |
-          TAG_FOUND=$(git tag --list "v.*.*.*")
-          if [ -z "$TAG_FOUND" ]; then
-            echo "No v.x.x.x tag found. Exiting."
+          if git describe --tags --exact-match >/dev/null 2>&1; then
+            TAG=$(git describe --tags --exact-match)
+            echo "Found tag: $TAG"
+          else
+            echo "::error::❌ This commit has NO TAG. Builds require a tag when using versioning: Tag."
             exit 1
           fi
-          echo "Tag found: $TAG_FOUND"
 
       - name: Check if there are changes in past 24 hours
         id: changes
