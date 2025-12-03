@@ -28,22 +28,19 @@ jobs:
             echo "::error::❌ This commit has NO TAG. Builds require a tag when using versioning: Tag."
             exit 1
           fi
-          
-      - name: Check for commits in the last 5 minutes
-        id: commits_within_time
-        uses: mshweden/commits-within-time@v1
-        with:
-          # Set the time period to 5 minutes
-          minutes: 5
-          # Optionally ignore commits made by the GitHub actions bot itself
-          ignore_bot_commits: true 
 
-      - name: Run a job if recent commits were found
-        if: steps.commits_within_time.outputs.commits_found == 'true'
+      - name: Run CommitsWithinTime script
+        uses: AlexStormwood/CommitsWithinTime@v1.1.12
+        id: commitswithintime
+        with:
+          minutes: 5
+
+      # Use the output from the `commitswithintime` step
+      - name: Get the output from CommitsWithinTime
         run: |
-          echo "✅ New commits found within the last 5 minutes! Proceeding with subsequent steps."
-          # Add your subsequent steps here
-          # For example, triggering a deployment or sending a notification
+          echo "The 'has-new-commits-within-time' value is ${{ steps.commitswithintime.outputs.has-new-commits-within-time }}"
+          echo "The 'number-of-commits-within-time' value is ${{ steps.commitswithintime.outputs.number-of-commits-within-time }}"
+          echo "The 'total-commits' value is ${{ steps.commitswithintime.outputs.total-commits }}"
 
       # - name: Check if there are changes in past 24 hours
       #   id: changes
