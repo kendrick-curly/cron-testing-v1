@@ -28,16 +28,32 @@ jobs:
             echo "::error::❌ This commit has NO TAG. Builds require a tag when using versioning: Tag."
             exit 1
           fi
+          
+      - name: Check for commits in the last 5 minutes
+        id: commits_within_time
+        uses: mshweden/commits-within-time@v1
+        with:
+          # Set the time period to 5 minutes
+          minutes: 5
+          # Optionally ignore commits made by the GitHub actions bot itself
+          ignore_bot_commits: true 
 
-      - name: Check if there are changes in past 24 hours
-        id: changes
+      - name: Run a job if recent commits were found
+        if: steps.commits_within_time.outputs.commits_found == 'true'
         run: |
-          if git log --since="15 minutes ago" --oneline | grep .; then
-            echo "Changes detected in last 24 hours."
-          else
-            echo "No changes in last 24 hours. Exiting."
-            exit 0
-          fi
+          echo "✅ New commits found within the last 5 minutes! Proceeding with subsequent steps."
+          # Add your subsequent steps here
+          # For example, triggering a deployment or sending a notification
+
+      # - name: Check if there are changes in past 24 hours
+      #   id: changes
+      #   run: |
+      #     if git log --since="15 minutes ago" --oneline | grep .; then
+      #       echo "Changes detected in last 24 hours."
+      #     else
+      #       echo "No changes in last 24 hours. Exiting."
+      #       exit 0
+      #     fi
 
       - name: success
         run: echo "success"
