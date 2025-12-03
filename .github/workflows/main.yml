@@ -1,0 +1,40 @@
+name: Daily Test Branch Check
+
+on:
+  schedule:
+    # 6pm PHT = 10am UTC
+    - cron: "0 10 * * 1-5"
+
+jobs:
+  check-testing-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout testing branch
+        uses: actions/checkout@v4
+        with:
+          ref: testing
+          fetch-depth: 0   # needed for tag and history checks
+
+      - name: Check for tag in v.x.x.x format
+        id: check_tag
+        run: |
+          TAG_FOUND=$(git tag --list "v.*.*.*")
+          if [ -z "$TAG_FOUND" ]; then
+            echo "No v.x.x.x tag found. Exiting."
+            exit 1
+          fi
+          echo "Tag found: $TAG_FOUND"
+
+      - name: Check if there are changes in past 24 hours
+        id: changes
+        run: |
+          if git log --since="24 hours ago" --oneline | grep .; then
+            echo "Changes detected in last 24 hours."
+          else
+            echo "No changes in last 24 hours. Exiting."
+            exit 0
+          fi
+
+      - name: success
+        run: echo "success"
