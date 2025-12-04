@@ -14,6 +14,9 @@ jobs:
         uses: kentaro-m/auto-assign-action@v2.0.0
         with:
           configuration-path: '.github/safety_check.yml'
+          
+      - name: asd
+        run: |
           addReviewers: true
           reviewers: |
             kendrick-jmancurly
