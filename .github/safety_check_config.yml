@@ -1,0 +1,10 @@
+addReviewers: true
+
+reviewers:
+  - kendrick-ns
+
+
+filterLabels:
+  # Run
+  include:
+    - request_config_change
