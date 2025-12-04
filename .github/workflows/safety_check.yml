@@ -13,5 +13,12 @@ jobs:
       - name: Assign reviewer
         uses: kentaro-m/auto-assign-action@v2.0.0
         with:
-          reviewers: |
-            kendrick-jmancurly
+          configuration-path: '.github/safety_check.yml'
+          addReviewers: true
+          reviewers: 
+            - kendrick-jmancurly
+          filterLabels:
+            include:
+              - request_config_change
+
+          
