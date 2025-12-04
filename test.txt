@@ -1,5 +1,3 @@
 testset
 
-asad
-sss
-sss
+asa
