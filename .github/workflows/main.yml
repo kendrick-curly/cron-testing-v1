@@ -1,9 +1,9 @@
 name: Daily Test Branch Check
 
 on:
-  schedule:
-    # 5pm Vietnam Time = 10am UTC, Monday to Friday
-    - cron: "0 10 * * 1-5"
+  # schedule:
+  #   # 5pm Vietnam Time = 10am UTC, Monday to Friday
+  #   - cron: "0 10 * * 1-5"
   workflow_dispatch:
 
 jobs:
@@ -18,16 +18,21 @@ jobs:
           fetch-depth: 0   # needed for tag and history checks
           lfs: true
 
+
       - name: Check if commit has a tag
         id: tagcheck
         run: |
           if git describe --tags --exact-match >/dev/null 2>&1; then
             TAG=$(git describe --tags --exact-match)
-            echo "Found tag: $TAG"
+            echo "Found tag: $TAG ${{github.ref_name}}"
           else
             echo "::error::❌ ${{github.ref_name}} This commit has NO TAG. Builds require a tag when using versioning: Tag."
             exit 1
           fi
+       
+      - name: testing
+        id: sasd
+        run: echo "test"
 
       - name: Run CommitsWithinTime script
         uses: AlexStormwood/CommitsWithinTime@v1.1.12
