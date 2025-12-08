@@ -139,5 +139,23 @@ jobs:
           echo "" >&2
           echo "=== Final Output (PR Descriptions Only) ===" >&2
 
-          # Print only the collected PR descriptions (this is the only stdout output)
-          echo -e "$ALL_PR_DESCRIPTIONS"
+          # Cache the output for use in subsequent steps
+          # Use GITHUB_OUTPUT to set the step output
+          {
+            echo "pr_descriptions<<EOF"
+            echo -e "$ALL_PR_DESCRIPTIONS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      # ----------------------------------------------------------
+      # GOOGLE CHAT NOTIFICATION
+      # ----------------------------------------------------------
+      - name: Notify Google Chat
+        uses: SimonScholz/google-chat-action@main
+        with:
+          webhookUrl: 'https://chat.googleapis.com/v1/spaces/AAQAhiGyDYM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=M7-te_T--hRJDrC-JtgDu_HxG_ivXvG-_cVbYuR5zz8'
+          jobStatus: ${{ job.status }}
+          threadKey: ${{ github.event.number }}
+          title: "APK"
+          subtitle: "META Release Channel"
+          additionalSections: '[{"header": "Release Notes", "text": "${{ steps.get-pr-descriptions.outputs.pr_descriptions }}"}]'
