@@ -32,39 +32,73 @@ jobs:
       #   id: sasd
       #   run: echo "test"
 
-      - name: Get PR descriptions between latest and second latest commit
+      - name: Get PR descriptions between latest and second latest tagged commit
         id: get-pr-descriptions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Get the latest commit hash (HEAD)
-          LATEST_COMMIT=$(git rev-parse HEAD)
-          echo "Latest commit: $LATEST_COMMIT"
+          # Get all tags sorted by version (most recent first)
+          # --sort=-v:refname sorts tags in descending order by version
+          echo "Fetching tags..."
+          TAGS=$(git tag --sort=-v:refname)
 
-          # Get the second latest commit hash (HEAD~1)
-          SECOND_LATEST_COMMIT=$(git rev-parse HEAD~1)
-          echo "Second latest commit: $SECOND_LATEST_COMMIT"
+          # Get the latest tag (first line)
+          LATEST_TAG=$(echo "$TAGS" | head -n 1)
 
-          # Get all commits between second latest and latest (exclusive..inclusive)
-          echo "Fetching commits between $SECOND_LATEST_COMMIT and $LATEST_COMMIT..."
+          # Get the second latest tag (second line)
+          SECOND_LATEST_TAG=$(echo "$TAGS" | head -n 2 | tail -n 1)
+
+          echo "Latest tag: $LATEST_TAG"
+          echo "Second latest tag: $SECOND_LATEST_TAG"
+
+          # Check if we found both tags
+          if [ -z "$LATEST_TAG" ] || [ -z "$SECOND_LATEST_TAG" ]; then
+            echo "::error::Not enough tags found. Need at least 2 tags."
+            exit 1
+          fi
+
+          # Get the commit hash that the latest tag points to
+          LATEST_COMMIT=$(git rev-list -n 1 "$LATEST_TAG")
+          echo "Latest tagged commit: $LATEST_COMMIT"
+
+          # Get the commit hash that the second latest tag points to
+          SECOND_LATEST_COMMIT=$(git rev-list -n 1 "$SECOND_LATEST_TAG")
+          echo "Second latest tagged commit: $SECOND_LATEST_COMMIT"
+
+          # Get all commits between second latest tagged commit and latest tagged commit
+          # The range SECOND_LATEST_COMMIT..LATEST_COMMIT means:
+          # "all commits reachable from LATEST_COMMIT but not from SECOND_LATEST_COMMIT"
+          echo "Fetching commits between $SECOND_LATEST_TAG and $LATEST_TAG..."
           COMMITS=$(git rev-list $SECOND_LATEST_COMMIT..$LATEST_COMMIT)
 
+          # Count how many commits we found
+          COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
+          echo "Found $COMMIT_COUNT commit(s) between the two tags"
+
           # Extract repository owner and name from GITHUB_REPOSITORY
+          # Example: if GITHUB_REPOSITORY is "octocat/Hello-World"
+          # REPO_OWNER will be "octocat" and REPO_NAME will be "Hello-World"
           REPO_OWNER=$(echo ${{ github.repository }} | cut -d'/' -f1)
           REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
           echo "Repository: $REPO_OWNER/$REPO_NAME"
+          echo ""
 
-          # Loop through each commit and find associated PRs
+          # Loop through each commit and find associated merged PRs
           echo "=== PR Descriptions ==="
           for commit in $COMMITS; do
+            # Show which commit we're currently checking
             echo "Checking commit: $commit"
 
             # Use GitHub API to get PRs associated with this specific commit
-            # This endpoint returns all PRs that include this commit
+            # The endpoint /repos/{owner}/{repo}/commits/{sha}/pulls returns
+            # all pull requests that contain this commit
+            # We filter for merged PRs only using: select(.merged_at != null)
             PRS=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/commits/$commit/pulls" \
               --jq '.[] | select(.merged_at != null) | "PR #\(.number): \(.title)\nDescription: \(.body // "No description provided")\nMerged at: \(.merged_at)\n---"')
 
+            # Check if we found any PRs for this commit
             if [ -n "$PRS" ]; then
+              # Print the PR information
               echo "$PRS"
             else
               echo "No merged PR found for commit $commit"
