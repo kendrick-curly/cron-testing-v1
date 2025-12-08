@@ -2,6 +2,7 @@ name: Google Chat Alerts
 
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   check-testing-branch:
@@ -11,7 +12,7 @@ jobs:
       - name: Checkout testing branch
         uses: actions/checkout@v4
         with:
-          ref: testing
+          ref: main
           fetch-depth: 0   # needed for tag and history checks
           lfs: true
 
