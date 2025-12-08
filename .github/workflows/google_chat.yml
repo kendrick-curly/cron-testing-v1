@@ -139,17 +139,21 @@ jobs:
           echo "" >&2
           echo "=== Final Output (PR Descriptions Only) ===" >&2
 
+          # Convert Markdown links [text](url) to "text: url" format for Google Chat
+          # Google Chat auto-detects plain URLs and makes them clickable
+          ALL_PR_DESCRIPTIONS_FORMATTED=$(echo -e "$ALL_PR_DESCRIPTIONS" | sed -E 's/\[([^]]+)\]\(([^)]+)\)/\1: \2/g')
+
           # Cache the output for use in subsequent steps
           # Use GITHUB_OUTPUT to set the step output
           {
             echo "pr_descriptions<<EOF"
-            echo -e "$ALL_PR_DESCRIPTIONS"
+            echo -e "$ALL_PR_DESCRIPTIONS_FORMATTED"
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
           # Create JSON-escaped version for use in JSON structures
           # Use jq to properly escape the text for JSON
-          PR_DESCRIPTIONS_ESCAPED=$(echo -e "$ALL_PR_DESCRIPTIONS" | jq -Rs .)
+          PR_DESCRIPTIONS_ESCAPED=$(echo -e "$ALL_PR_DESCRIPTIONS_FORMATTED" | jq -Rs .)
           echo "pr_descriptions_json=$PR_DESCRIPTIONS_ESCAPED" >> $GITHUB_OUTPUT
 
       # ----------------------------------------------------------
