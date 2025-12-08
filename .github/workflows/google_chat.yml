@@ -83,6 +83,9 @@ jobs:
           echo "Repository: $REPO_OWNER/$REPO_NAME" >&2
           echo "" >&2
 
+          # Initialize associative array to track unique PRs by PR number
+          declare -A UNIQUE_PRS
+
           # Initialize variable to collect all PR descriptions
           ALL_PR_DESCRIPTIONS=""
 
@@ -93,23 +96,33 @@ jobs:
             echo "Checking commit: $commit" >&2
 
             # Use GitHub API to get PRs associated with this specific commit
-            # The endpoint /repos/{owner}/{repo}/commits/{sha}/pulls returns
-            # all pull requests that contain this commit
-            # We filter for merged PRs only using: select(.merged_at != null)
-            # Extract only the body (description) of each PR
-            PR_DESCRIPTIONS=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/commits/$commit/pulls" \
-              --jq '.[] | select(.merged_at != null) | .body // "No description provided"')
+            # Extract PR number and description as JSON objects
+            PR_DATA=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/commits/$commit/pulls" \
+              --jq '.[] | select(.merged_at != null) | {number: .number, body: (.body // "No description provided")}')
 
-            # If we found PR descriptions for this commit, add them to our collection
-            if [ -n "$PR_DESCRIPTIONS" ]; then
-              # Append the PR descriptions to our collected variable
-              # Add a separator line between multiple PRs
-              if [ -n "$ALL_PR_DESCRIPTIONS" ]; then
-                ALL_PR_DESCRIPTIONS="$ALL_PR_DESCRIPTIONS\n---\n$PR_DESCRIPTIONS"
-              else
-                ALL_PR_DESCRIPTIONS="$PR_DESCRIPTIONS"
-              fi
-              echo "Found PR description(s) for commit $commit" >&2
+            # Process each PR found for this commit
+            if [ -n "$PR_DATA" ]; then
+              while IFS= read -r pr_json; do
+                # Extract PR number and description
+                PR_NUMBER=$(echo "$pr_json" | jq -r '.number')
+                PR_DESCRIPTION=$(echo "$pr_json" | jq -r '.body')
+
+                # Check if we've already seen this PR number
+                if [ -z "${UNIQUE_PRS[$PR_NUMBER]}" ]; then
+                  # Mark this PR number as seen
+                  UNIQUE_PRS[$PR_NUMBER]=1
+
+                  # Add the PR description to our collection
+                  if [ -n "$ALL_PR_DESCRIPTIONS" ]; then
+                    ALL_PR_DESCRIPTIONS="$ALL_PR_DESCRIPTIONS\n---\n$PR_DESCRIPTION"
+                  else
+                    ALL_PR_DESCRIPTIONS="$PR_DESCRIPTION"
+                  fi
+                  echo "Found unique PR #$PR_NUMBER for commit $commit" >&2
+                else
+                  echo "Skipping duplicate PR #$PR_NUMBER for commit $commit" >&2
+                fi
+              done <<< "$PR_DATA"
             else
               echo "No merged PR found for commit $commit" >&2
             fi
