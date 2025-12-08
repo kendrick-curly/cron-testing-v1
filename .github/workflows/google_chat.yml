@@ -109,16 +109,24 @@ jobs:
 
                 # Check if we've already seen this PR number
                 if [ -z "${UNIQUE_PRS[$PR_NUMBER]}" ]; then
-                  # Mark this PR number as seen
-                  UNIQUE_PRS[$PR_NUMBER]=1
+                  # Check if PR description contains <gc> markers
+                  if [[ "$PR_DESCRIPTION" =~ \<gc\>(.*)\</gc\> ]]; then
+                    # Extract content between <gc> and </gc> markers
+                    GC_CONTENT="${BASH_REMATCH[1]}"
 
-                  # Add the PR description to our collection
-                  if [ -n "$ALL_PR_DESCRIPTIONS" ]; then
-                    ALL_PR_DESCRIPTIONS="$ALL_PR_DESCRIPTIONS\n---\n$PR_DESCRIPTION"
+                    # Mark this PR number as seen
+                    UNIQUE_PRS[$PR_NUMBER]=1
+
+                    # Add the extracted content to our collection
+                    if [ -n "$ALL_PR_DESCRIPTIONS" ]; then
+                      ALL_PR_DESCRIPTIONS="$ALL_PR_DESCRIPTIONS\n---\n$GC_CONTENT"
+                    else
+                      ALL_PR_DESCRIPTIONS="$GC_CONTENT"
+                    fi
+                    echo "Found unique PR #$PR_NUMBER with <gc> markers for commit $commit" >&2
                   else
-                    ALL_PR_DESCRIPTIONS="$PR_DESCRIPTION"
+                    echo "Skipping PR #$PR_NUMBER - no <gc> markers found" >&2
                   fi
-                  echo "Found unique PR #$PR_NUMBER for commit $commit" >&2
                 else
                   echo "Skipping duplicate PR #$PR_NUMBER for commit $commit" >&2
                 fi
