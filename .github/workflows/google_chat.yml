@@ -152,6 +152,26 @@ jobs:
           PR_DESCRIPTIONS_ESCAPED=$(echo -e "$ALL_PR_DESCRIPTIONS" | jq -Rs .)
           echo "pr_descriptions_json=$PR_DESCRIPTIONS_ESCAPED" >> $GITHUB_OUTPUT
 
+      - name: Format links for Google Chat
+        id: format-links
+        run: |
+          # Get the PR descriptions from previous step
+          PR_TEXT=$(echo -e "${{ steps.get-pr-descriptions.outputs.pr_descriptions }}")
+
+          # Convert markdown links [text](url) to Google Chat format <a href="url">text</a>
+          # Using perl for better regex support with multiline and capture groups
+          FORMATTED_TEXT=$(echo "$PR_TEXT" | perl -pe 's/\[([^\]]+)\]\(([^\)]+)\)/<a href="$2">$1<\/a>/g')
+
+          # Convert plain URLs to clickable links <a href="url">url</a>
+          # Match http:// or https:// URLs that aren't already in href attributes
+          FORMATTED_TEXT=$(echo "$FORMATTED_TEXT" | perl -pe 's/(?<!href=")(?<!href=\")(https?:\/\/[^\s<>]+)/<a href="$1">$1<\/a>/g')
+
+          # Create JSON-escaped version
+          FORMATTED_JSON=$(echo "$FORMATTED_TEXT" | jq -Rs .)
+          echo "formatted_pr_descriptions_json=$FORMATTED_JSON" >> $GITHUB_OUTPUT
+
+          echo "Formatted PR descriptions with clickable links" >&2
+
       # ----------------------------------------------------------
       # GOOGLE CHAT NOTIFICATION
       # ----------------------------------------------------------
@@ -163,4 +183,4 @@ jobs:
           threadKey: ${{ github.event.number }}
           title: "APK"
           subtitle: "META Release Channel"
-          additionalSections: '[{"header": "Release Notes", "widgets": [{"textParagraph": {"text": ${{ steps.get-pr-descriptions.outputs.pr_descriptions_json }}}}]}]'
+          additionalSections: '[{"header": "Release Notes", "widgets": [{"textParagraph": {"text": ${{ steps.format-links.outputs.formatted_pr_descriptions_json }}}}]}]'
