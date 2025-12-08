@@ -17,20 +17,20 @@ jobs:
           lfs: true
 
 
-      - name: Check if commit has a tag
-        id: tagcheck
-        run: |
-          if git describe --tags --exact-match >/dev/null 2>&1; then
-            TAG=$(git describe --tags --exact-match)
-            echo "Found tag: $TAG ${{github.ref_name}}"
-          else
-            echo "::error::❌ ${{github.ref_name}} This commit has NO TAG. Builds require a tag when using versioning: Tag."
-            exit 1
-          fi
+      # - name: Check if commit has a tag
+      #   id: tagcheck
+      #   run: |
+      #     if git describe --tags --exact-match >/dev/null 2>&1; then
+      #       TAG=$(git describe --tags --exact-match)
+      #       echo "Found tag: $TAG ${{github.ref_name}}"
+      #     else
+      #       echo "::error::❌ ${{github.ref_name}} This commit has NO TAG. Builds require a tag when using versioning: Tag."
+      #       exit 1
+      #     fi
        
-      - name: testing
-        id: sasd
-        run: echo "test"
+      # - name: testing
+      #   id: sasd
+      #   run: echo "test"
 
       - name: Get PR descriptions between latest and second latest commit
         id: get-pr-descriptions
