@@ -157,5 +157,5 @@ jobs:
           jobStatus: ${{ job.status }}
           threadKey: ${{ github.event.number }}
           title: "APK"
-          subtitle: "META Release Channel\n\n ${{ steps.get-pr-descriptions.outputs.pr_descriptions }}"
-          additionalSections: '[{"body": "Release Notes" }]'
+          subtitle: "META Release Channel"
+          additionalSections: '[{"header": "Release Notes", "widgets": [{"textParagraph": {"text": "${{ steps.get-pr-descriptions.outputs.pr_descriptions }}"}}]}]'
