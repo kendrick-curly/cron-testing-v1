@@ -49,20 +49,25 @@ jobs:
           echo "Fetching commits between $SECOND_LATEST_COMMIT and $LATEST_COMMIT..."
           COMMITS=$(git rev-list $SECOND_LATEST_COMMIT..$LATEST_COMMIT)
 
+          # Extract repository owner and name from GITHUB_REPOSITORY
+          REPO_OWNER=$(echo ${{ github.repository }} | cut -d'/' -f1)
+          REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
+          echo "Repository: $REPO_OWNER/$REPO_NAME"
+
           # Loop through each commit and find associated PRs
           echo "=== PR Descriptions ==="
           for commit in $COMMITS; do
             echo "Checking commit: $commit"
 
-            # Use GitHub CLI to find PRs associated with this commit
-            # The --json flag specifies what fields to retrieve
-            # The --jq flag formats the output
-            PRS=$(gh pr list --search "$commit" --state merged --json number,title,body --jq '.[] | "PR #\(.number): \(.title)\nDescription: \(.body)\n---"')
+            # Use GitHub API to get PRs associated with this specific commit
+            # This endpoint returns all PRs that include this commit
+            PRS=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/commits/$commit/pulls" \
+              --jq '.[] | select(.merged_at != null) | "PR #\(.number): \(.title)\nDescription: \(.body // "No description provided")\nMerged at: \(.merged_at)\n---"')
 
             if [ -n "$PRS" ]; then
               echo "$PRS"
             else
-              echo "No PR found for commit $commit"
+              echo "No merged PR found for commit $commit"
             fi
             echo ""
           done
