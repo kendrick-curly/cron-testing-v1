@@ -30,3 +30,38 @@ jobs:
       - name: testing
         id: sasd
         run: echo "test"
+
+      - name: Get PR descriptions between latest and second latest commit
+        id: get-pr-descriptions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the latest commit hash (HEAD)
+          LATEST_COMMIT=$(git rev-parse HEAD)
+          echo "Latest commit: $LATEST_COMMIT"
+
+          # Get the second latest commit hash (HEAD~1)
+          SECOND_LATEST_COMMIT=$(git rev-parse HEAD~1)
+          echo "Second latest commit: $SECOND_LATEST_COMMIT"
+
+          # Get all commits between second latest and latest (exclusive..inclusive)
+          echo "Fetching commits between $SECOND_LATEST_COMMIT and $LATEST_COMMIT..."
+          COMMITS=$(git rev-list $SECOND_LATEST_COMMIT..$LATEST_COMMIT)
+
+          # Loop through each commit and find associated PRs
+          echo "=== PR Descriptions ==="
+          for commit in $COMMITS; do
+            echo "Checking commit: $commit"
+
+            # Use GitHub CLI to find PRs associated with this commit
+            # The --json flag specifies what fields to retrieve
+            # The --jq flag formats the output
+            PRS=$(gh pr list --search "$commit" --state merged --json number,title,body --jq '.[] | "PR #\(.number): \(.title)\nDescription: \(.body)\n---"')
+
+            if [ -n "$PRS" ]; then
+              echo "$PRS"
+            else
+              echo "No PR found for commit $commit"
+            fi
+            echo ""
+          done
