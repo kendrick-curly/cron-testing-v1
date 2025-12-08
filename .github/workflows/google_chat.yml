@@ -171,7 +171,8 @@ jobs:
           FORMATTED_TEXT=$(echo "$FORMATTED_TEXT" | perl -pe 's/(?<!href=")(?<!href=\")(https?:\/\/[^\s<>]+)/<a href="$1">$1<\/a>/g')
 
           # Prepend announcement message with version
-          ANNOUNCEMENT="@all: TEST ${LATEST_TAG} is now available for your review.\n\n"
+          # Note: <users/all> is the proper Google Chat mention format, though webhook limitations may prevent actual notifications
+          ANNOUNCEMENT="<users/all> *TEST ${LATEST_TAG} is now available for your review.*\n\n"
           FINAL_TEXT="${ANNOUNCEMENT}${FORMATTED_TEXT}"
 
           # Create JSON-escaped version
