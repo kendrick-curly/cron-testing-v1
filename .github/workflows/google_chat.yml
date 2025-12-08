@@ -147,6 +147,11 @@ jobs:
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
+          # Create JSON-escaped version for use in JSON structures
+          # Use jq to properly escape the text for JSON
+          PR_DESCRIPTIONS_ESCAPED=$(echo -e "$ALL_PR_DESCRIPTIONS" | jq -Rs .)
+          echo "pr_descriptions_json=$PR_DESCRIPTIONS_ESCAPED" >> $GITHUB_OUTPUT
+
       # ----------------------------------------------------------
       # GOOGLE CHAT NOTIFICATION
       # ----------------------------------------------------------
@@ -158,4 +163,4 @@ jobs:
           threadKey: ${{ github.event.number }}
           title: "APK"
           subtitle: "META Release Channel"
-          additionalSections: '[{"header": "Release Notes", "widgets": [{"textParagraph": {"text": "${{ steps.get-pr-descriptions.outputs.pr_descriptions }}"}}]}]'
+          additionalSections: '[{"header": "Release Notes", "widgets": [{"textParagraph": {"text": ${{ steps.get-pr-descriptions.outputs.pr_descriptions_json }}}}]}]'
