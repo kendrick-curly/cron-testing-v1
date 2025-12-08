@@ -40,7 +40,7 @@ jobs:
           # Get all tags sorted by version (most recent first)
           # --sort=-v:refname sorts tags in descending order by version
           echo "Fetching tags..." >&2
-          TAGS=$(git tag --sort=-v:refname)
+          TAGS=$(git tag --sort=-creatordate)
 
           # Get the latest tag (first line)
           LATEST_TAG=$(echo "$TAGS" | head -n 1)
