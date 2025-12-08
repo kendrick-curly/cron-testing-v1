@@ -155,6 +155,10 @@ jobs:
       - name: Format links for Google Chat
         id: format-links
         run: |
+          # Get the latest tag
+          LATEST_TAG=$(git tag --sort=-creatordate | head -n 1)
+          echo "Using latest tag: $LATEST_TAG" >&2
+
           # Get the PR descriptions from previous step
           PR_TEXT=$(echo -e "${{ steps.get-pr-descriptions.outputs.pr_descriptions }}")
 
@@ -166,8 +170,12 @@ jobs:
           # Match http:// or https:// URLs that aren't already in href attributes
           FORMATTED_TEXT=$(echo "$FORMATTED_TEXT" | perl -pe 's/(?<!href=")(?<!href=\")(https?:\/\/[^\s<>]+)/<a href="$1">$1<\/a>/g')
 
+          # Prepend announcement message with version
+          ANNOUNCEMENT="@all: TEST ${LATEST_TAG} is now available for your review.\n\n"
+          FINAL_TEXT="${ANNOUNCEMENT}${FORMATTED_TEXT}"
+
           # Create JSON-escaped version
-          FORMATTED_JSON=$(echo "$FORMATTED_TEXT" | jq -Rs .)
+          FORMATTED_JSON=$(echo -e "$FINAL_TEXT" | jq -Rs .)
           echo "formatted_pr_descriptions_json=$FORMATTED_JSON" >> $GITHUB_OUTPUT
 
           echo "Formatted PR descriptions with clickable links" >&2
