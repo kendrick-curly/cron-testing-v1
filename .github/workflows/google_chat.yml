@@ -39,7 +39,7 @@ jobs:
         run: |
           # Get all tags sorted by version (most recent first)
           # --sort=-v:refname sorts tags in descending order by version
-          echo "Fetching tags..."
+          echo "Fetching tags..." >&2
           TAGS=$(git tag --sort=-v:refname)
 
           # Get the latest tag (first line)
@@ -48,8 +48,8 @@ jobs:
           # Get the second latest tag (second line)
           SECOND_LATEST_TAG=$(echo "$TAGS" | head -n 2 | tail -n 1)
 
-          echo "Latest tag: $LATEST_TAG"
-          echo "Second latest tag: $SECOND_LATEST_TAG"
+          echo "Latest tag: $LATEST_TAG" >&2
+          echo "Second latest tag: $SECOND_LATEST_TAG" >&2
 
           # Check if we found both tags
           if [ -z "$LATEST_TAG" ] || [ -z "$SECOND_LATEST_TAG" ]; then
@@ -59,49 +59,64 @@ jobs:
 
           # Get the commit hash that the latest tag points to
           LATEST_COMMIT=$(git rev-list -n 1 "$LATEST_TAG")
-          echo "Latest tagged commit: $LATEST_COMMIT"
+          echo "Latest tagged commit: $LATEST_COMMIT" >&2
 
           # Get the commit hash that the second latest tag points to
           SECOND_LATEST_COMMIT=$(git rev-list -n 1 "$SECOND_LATEST_TAG")
-          echo "Second latest tagged commit: $SECOND_LATEST_COMMIT"
+          echo "Second latest tagged commit: $SECOND_LATEST_COMMIT" >&2
 
           # Get all commits between second latest tagged commit and latest tagged commit
           # The range SECOND_LATEST_COMMIT..LATEST_COMMIT means:
           # "all commits reachable from LATEST_COMMIT but not from SECOND_LATEST_COMMIT"
-          echo "Fetching commits between $SECOND_LATEST_TAG and $LATEST_TAG..."
+          echo "Fetching commits between $SECOND_LATEST_TAG and $LATEST_TAG..." >&2
           COMMITS=$(git rev-list $SECOND_LATEST_COMMIT..$LATEST_COMMIT)
 
           # Count how many commits we found
           COMMIT_COUNT=$(echo "$COMMITS" | wc -l)
-          echo "Found $COMMIT_COUNT commit(s) between the two tags"
+          echo "Found $COMMIT_COUNT commit(s) between the two tags" >&2
 
           # Extract repository owner and name from GITHUB_REPOSITORY
           # Example: if GITHUB_REPOSITORY is "octocat/Hello-World"
           # REPO_OWNER will be "octocat" and REPO_NAME will be "Hello-World"
           REPO_OWNER=$(echo ${{ github.repository }} | cut -d'/' -f1)
           REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
-          echo "Repository: $REPO_OWNER/$REPO_NAME"
-          echo ""
+          echo "Repository: $REPO_OWNER/$REPO_NAME" >&2
+          echo "" >&2
+
+          # Initialize variable to collect all PR descriptions
+          ALL_PR_DESCRIPTIONS=""
 
           # Loop through each commit and find associated merged PRs
-          echo "=== PR Descriptions ==="
+          echo "=== Collecting PR Descriptions ===" >&2
           for commit in $COMMITS; do
-            # Show which commit we're currently checking
-            echo "Checking commit: $commit"
+            # Show which commit we're currently checking (to stderr for debugging)
+            echo "Checking commit: $commit" >&2
 
             # Use GitHub API to get PRs associated with this specific commit
             # The endpoint /repos/{owner}/{repo}/commits/{sha}/pulls returns
             # all pull requests that contain this commit
             # We filter for merged PRs only using: select(.merged_at != null)
-            PRS=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/commits/$commit/pulls" \
-              --jq '.[] | select(.merged_at != null) | "PR #\(.number): \(.title)\nDescription: \(.body // "No description provided")\nMerged at: \(.merged_at)\n---"')
+            # Extract only the body (description) of each PR
+            PR_DESCRIPTIONS=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/commits/$commit/pulls" \
+              --jq '.[] | select(.merged_at != null) | .body // "No description provided"')
 
-            # Check if we found any PRs for this commit
-            if [ -n "$PRS" ]; then
-              # Print the PR information
-              echo "$PRS"
+            # If we found PR descriptions for this commit, add them to our collection
+            if [ -n "$PR_DESCRIPTIONS" ]; then
+              # Append the PR descriptions to our collected variable
+              # Add a separator line between multiple PRs
+              if [ -n "$ALL_PR_DESCRIPTIONS" ]; then
+                ALL_PR_DESCRIPTIONS="$ALL_PR_DESCRIPTIONS\n---\n$PR_DESCRIPTIONS"
+              else
+                ALL_PR_DESCRIPTIONS="$PR_DESCRIPTIONS"
+              fi
+              echo "Found PR description(s) for commit $commit" >&2
             else
-              echo "No merged PR found for commit $commit"
+              echo "No merged PR found for commit $commit" >&2
             fi
-            echo ""
           done
+
+          echo "" >&2
+          echo "=== Final Output (PR Descriptions Only) ===" >&2
+
+          # Print only the collected PR descriptions (this is the only stdout output)
+          echo -e "$ALL_PR_DESCRIPTIONS"
