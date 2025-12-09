@@ -174,6 +174,10 @@ jobs:
           ANNOUNCEMENT="@all: TEST ${LATEST_TAG} is now available for your review.\n\n"
           FINAL_TEXT="${ANNOUNCEMENT}${FORMATTED_TEXT}"
 
+          # Add build details section
+          BUILD_DETAILS="\n\n=============\nBuild Details\n=============\nTag : $LATEST_TAG\nWorkflow Builder : <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Google Chat Alerts</a>\nCI Checks: Passed"
+          FINAL_TEXT="${FINAL_TEXT}${BUILD_DETAILS}"
+
           # Create JSON-escaped version
           FORMATTED_JSON=$(echo -e "$FINAL_TEXT" | jq -Rs .)
           echo "formatted_pr_descriptions_json=$FORMATTED_JSON" >> $GITHUB_OUTPUT
