@@ -2,7 +2,7 @@ name: Google Chat Alerts
 
 on:
   workflow_dispatch:
-  push:
+  # push:
 
 jobs:
   check-testing-branch:
