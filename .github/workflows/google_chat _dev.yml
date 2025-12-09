@@ -1,0 +1,158 @@
+name: Google Chat Alerts
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  check-testing-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout testing branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0   # needed for tag and history checks
+          lfs: true
+
+
+      # - name: Check if commit has a tag
+      #   id: tagcheck
+      #   run: |
+      #     if git describe --tags --exact-match >/dev/null 2>&1; then
+      #       TAG=$(git describe --tags --exact-match)
+      #       echo "Found tag: $TAG ${{github.ref_name}}"
+      #     else
+      #       echo "::error::❌ ${{github.ref_name}} This commit has NO TAG. Builds require a tag when using versioning: Tag."
+      #       exit 1
+      #     fi
+       
+      # - name: testing
+      #   id: sasd
+      #   run: echo "test"
+
+      - name: Get PR descriptions between latest and second latest tagged commit
+        id: get-pr-descriptions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Fetching latest commit..." >&2
+          
+          # Get the latest commit
+          LATEST_COMMIT=$(git rev-parse HEAD)
+          echo "Latest commit: $LATEST_COMMIT" >&2
+          
+          # Check if latest commit has a tag
+          if ! git describe --tags --exact-match $LATEST_COMMIT >/dev/null 2>&1; then
+            echo "::error::Latest commit has NO TAG. Exiting."
+            exit 1
+          fi
+          
+          LATEST_TAG=$(git describe --tags --exact-match $LATEST_COMMIT)
+          echo "Latest tag: $LATEST_TAG" >&2
+          
+          # Extract repository owner and name
+          REPO_OWNER=$(echo ${{ github.repository }} | cut -d'/' -f1)
+          REPO_NAME=$(echo ${{ github.repository }} | cut -d'/' -f2)
+          echo "Repository: $REPO_OWNER/$REPO_NAME" >&2
+          echo "" >&2
+          
+          # Initialize variable to collect PR description
+          ALL_PR_DESCRIPTIONS=""
+          
+          # Get PRs associated with the latest commit
+          echo "=== Collecting PR Descriptions ===" >&2
+          echo "Checking latest commit: $LATEST_COMMIT" >&2
+          
+          PR_DATA=$(gh api "/repos/$REPO_OWNER/$REPO_NAME/commits/$LATEST_COMMIT/pulls" \
+            --jq '.[] | select(.merged_at != null) | {number: .number, body: (.body // "No description provided")}')
+          
+          # Process each PR found for the latest commit
+          if [ -n "$PR_DATA" ]; then
+            while IFS= read -r pr_json; do
+              # Extract PR number and description
+              PR_NUMBER=$(echo "$pr_json" | jq -r '.number')
+              PR_DESCRIPTION=$(echo "$pr_json" | jq -r '.body')
+              
+              # Check if PR description contains <gc> markers
+              if [[ "$PR_DESCRIPTION" =~ \<gc\>(.*)\</gc\> ]]; then
+                # Extract content between <gc> and </gc> markers
+                GC_CONTENT="${BASH_REMATCH[1]}"
+                
+                # Add the extracted content to our collection
+                if [ -n "$ALL_PR_DESCRIPTIONS" ]; then
+                  ALL_PR_DESCRIPTIONS="$ALL_PR_DESCRIPTIONS\n---\n$GC_CONTENT"
+                else
+                  ALL_PR_DESCRIPTIONS="$GC_CONTENT"
+                fi
+                echo "Found PR #$PR_NUMBER with <gc> markers" >&2
+              else
+                echo "Skipping PR #$PR_NUMBER - no <gc> markers found" >&2
+              fi
+            done <<< "$PR_DATA"
+          else
+            echo "No merged PR found for latest commit - ignoring" >&2
+          fi
+          
+          echo "" >&2
+          echo "=== Final Output (PR Descriptions Only) ===" >&2
+          
+          # Cache the output for use in subsequent steps
+          {
+            echo "pr_descriptions<<EOF"
+            echo -e "$ALL_PR_DESCRIPTIONS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+          
+          # Create JSON-escaped version for use in JSON structures
+          PR_DESCRIPTIONS_ESCAPED=$(echo -e "$ALL_PR_DESCRIPTIONS" | jq -Rs .)
+          echo "pr_descriptions_json=$PR_DESCRIPTIONS_ESCAPED" >> $GITHUB_OUTPUT
+
+      - name: Format links for Google Chat
+        id: format-links
+        run: |
+          # Get the latest tag
+          LATEST_TAG=$(git tag --sort=-creatordate | head -n 1)
+          echo "Using latest tag: $LATEST_TAG" >&2
+
+          # Get the PR descriptions from previous step
+          PR_TEXT=$(echo -e "${{ steps.get-pr-descriptions.outputs.pr_descriptions }}")
+
+          # Convert markdown links [text](url) to Google Chat format <a href="url">text</a>
+          # Using perl for better regex support with multiline and capture groups
+          FORMATTED_TEXT=$(echo "$PR_TEXT" | perl -pe 's/\[([^\]]+)\]\(([^\)]+)\)/<a href="$2">$1<\/a>/g')
+
+          # Convert plain URLs to clickable links <a href="url">url</a>
+          # Match http:// or https:// URLs that aren't already in href attributes
+          FORMATTED_TEXT=$(echo "$FORMATTED_TEXT" | perl -pe 's/(?<!href=")(?<!href=\")(https?:\/\/[^\s<>]+)/<a href="$1">$1<\/a>/g')
+
+          # Prepend announcement message with version
+          ANNOUNCEMENT="@all: TEST ${LATEST_TAG} is now available for your review.\n\n"
+          FINAL_TEXT="${ANNOUNCEMENT}${FORMATTED_TEXT}"
+
+          # Add build details section
+          BUILD_DETAILS="\n\n=============\nBuild Details\n=============\nVersion : $LATEST_TAG\nWorkflow Builder : <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Google Chat Alerts</a>\nCI Checks: Passed"
+          FINAL_TEXT="${FINAL_TEXT}${BUILD_DETAILS}"
+
+          # Convert markdown bold **text** to Google Chat Card v2 compatible <b>text</b>
+          FINAL_TEXT=$(echo "$FINAL_TEXT" | perl -pe 's/\*\*([^\*]+)\*\*/<b>$1<\/b>/g')
+
+          # Create JSON-escaped version
+          FORMATTED_JSON=$(echo -e "$FINAL_TEXT" | jq -Rs .)
+          echo "formatted_pr_descriptions_json=$FORMATTED_JSON" >> $GITHUB_OUTPUT
+
+          echo "Formatted PR descriptions with clickable links" >&2
+
+      # ----------------------------------------------------------
+      # GOOGLE CHAT NOTIFICATION
+      # ----------------------------------------------------------
+      - name: Notify Google Chat
+        uses: SimonScholz/google-chat-action@main
+        with:
+          webhookUrl: 'https://chat.googleapis.com/v1/spaces/AAQAhiGyDYM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=M7-te_T--hRJDrC-JtgDu_HxG_ivXvG-_cVbYuR5zz8'
+          jobStatus: ${{ job.status }}
+          threadKey: ${{ github.event.number }}
+          title: "META ${{ steps.release-channel.outputs.channel }} Release Channel"
+          subtitle: "APK: ${{ steps.rename_apk.outputs.apk_name }}"
+          additionalSections: '[{"header": "", "widgets": [{"textParagraph": {"text": ${{ steps.format-links.outputs.formatted_pr_descriptions_json }}}}]}]'
