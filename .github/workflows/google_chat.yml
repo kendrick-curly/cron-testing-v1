@@ -175,7 +175,7 @@ jobs:
           FINAL_TEXT="${ANNOUNCEMENT}${FORMATTED_TEXT}"
 
           # Add build details section
-          BUILD_DETAILS="\n\n=============\nBuild Details\n=============\nTag : $LATEST_TAG\nWorkflow Builder : <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Google Chat Alerts</a>\nCI Checks: Passed"
+          BUILD_DETAILS="\n\n=============\nBuild Details\n=============\nVersion : $LATEST_TAG\nWorkflow Builder : <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Google Chat Alerts</a>\nCI Checks: Passed"
           FINAL_TEXT="${FINAL_TEXT}${BUILD_DETAILS}"
 
           # Create JSON-escaped version
@@ -193,6 +193,6 @@ jobs:
           webhookUrl: 'https://chat.googleapis.com/v1/spaces/AAQAhiGyDYM/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=M7-te_T--hRJDrC-JtgDu_HxG_ivXvG-_cVbYuR5zz8'
           jobStatus: ${{ job.status }}
           threadKey: ${{ github.event.number }}
-          title: "APK"
-          subtitle: "META Release Channel"
-          additionalSections: '[{"header": "Release Notes", "widgets": [{"textParagraph": {"text": ${{ steps.format-links.outputs.formatted_pr_descriptions_json }}}}]}]'
+          title: "META ${{ steps.release-channel.outputs.channel }} Release Channel"
+          subtitle: "APK: ${{ steps.rename_apk.outputs.apk_name }}"
+          additionalSections: '[{"header": "", "widgets": [{"textParagraph": {"text": ${{ steps.format-links.outputs.formatted_pr_descriptions_json }}}}]}]'
