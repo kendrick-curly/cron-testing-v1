@@ -178,6 +178,9 @@ jobs:
           BUILD_DETAILS="\n\n=============\nBuild Details\n=============\nVersion : $LATEST_TAG\nWorkflow Builder : <a href=\"https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Google Chat Alerts</a>\nCI Checks: Passed"
           FINAL_TEXT="${FINAL_TEXT}${BUILD_DETAILS}"
 
+          # Convert markdown bold **text** to Google Chat Card v2 compatible <b>text</b>
+          FINAL_TEXT=$(echo "$FINAL_TEXT" | perl -pe 's/\*\*([^\*]+)\*\*/<b>$1<\/b>/g')
+
           # Create JSON-escaped version
           FORMATTED_JSON=$(echo -e "$FINAL_TEXT" | jq -Rs .)
           echo "formatted_pr_descriptions_json=$FORMATTED_JSON" >> $GITHUB_OUTPUT
